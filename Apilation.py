@@ -3,6 +3,10 @@
 import requests
 import urllib3
 import time
+import urllib.parse
+from bson.json_util import loads
+from pymongo import MongoClient
+from pymongo.errors import BulkWriteError
 ################################################################################################################################
 # Turn off insecure request warnings that result from unverified ssl certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -34,7 +38,7 @@ def pipeline_output_collection(username,password,server,database,pipeline,source
     if print_info:
         print("Running Pipeline: "+pipeline)
         start=time.time()
-    response = requests.get(url=url,params=params,timeout=1,verify=False)
+    response = requests.get(url=url,params=params,verify=False)
     if print_info:
         print("  Execution Time: "+"{:.2f}s".format(time.time()-start))
         print("  Response: "+response.text)
@@ -66,14 +70,14 @@ def pipeline_output_json(username,password,server,database,pipeline,source_colle
     if print_info:
         print("Running Pipeline: "+pipeline)
         start=time.time()
-    response = requests.get(url=url,params=params,timeout=1,verify=False).json()
+    response = requests.get(url=url,params=params,verify=False).json()
     if print_info:
         print("  Execution Time: "+"{:.2f}s".format(time.time()-start))
         print("  Found: "+str(len(response))+" Records")
     return response
 ################################################################################################################################
-# Runs an Aggregation Pipeline on the specified source_collection in SonarG and provides the results as a json dictionary
-def insert_json_array(username,password,server,database,target_collection,json_array,other_args=None,
+# Inserts an array of json documents into the specified target_collection in SonarG using the gateway
+def insert_json_array(username,password,server,database,target_collection,json_array,other_args={"update.1":"_id"},
             print_info=True,gateway_port='8443',database_port='27117',host='localhost',subdatabase='lmrm__sonarg'):
     true_false_vars=[print_info]
     for var in true_false_vars:
@@ -97,10 +101,35 @@ def insert_json_array(username,password,server,database,target_collection,json_a
     if print_info:
         print("Inserting Data into: "+target_collection)
         start=time.time()
-    response = requests.get(url=url,params=params,timeout=1,verify=False)
+    response = requests.get(url=url,params=params,verify=False)
     if print_info:
         print("  Execution Time: "+"{:.2f}s".format(time.time()-start))
         print("  Response: "+response.text)
+    return response
+################################################################################################################################
+# Inserts an array of json documents into the specified target_collection in SonarG using a direct mongo connection
+def insert_json_array_mongo(username,password,server,database,target_collection,json_array,append=True,
+            print_info=True,database_port='27117'):
+    true_false_vars=[print_info]
+    
+    for var in true_false_vars:
+        assert var in [True,False]
+    client = MongoClient('mongodb://%s:%s@%s:%s' % (urllib.parse.quote_plus(username), urllib.parse.quote_plus(password),str(server),str(database_port)))
+    db = client[database]
+    col = db[target_collection]
+    if print_info:
+        print("Inserting Data into: "+target_collection)
+        start=time.time()
+    if append is not True:
+        col.drop()
+    try:
+        response = col.insert_many(loads(json_array),ordered=False)
+        if print_info:
+            print("  Response: Inserted "+str(len(response.inserted_ids))+" Documents")
+    except BulkWriteError:
+        print("  Bulk Write Error")
+        response="Bulk Write Error"
+    print("  Execution Time: "+"{:.2f}s".format(time.time()-start))
     return response
 ################################################################################################################################
 # Structures the server url with its connection type and endpoint
