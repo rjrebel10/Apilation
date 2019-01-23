@@ -13,7 +13,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 ################################################################################################################################
 # Runs an Aggregation Pipeline on the specified source_collection in SonarG and outputs the results into the target_collection
 def pipeline_output_collection(username,password,server,database,pipeline,source_collection,target_collection,append=True,other_args=None,
-            print_info=True,gateway_port='8443',database_port='27117',host='localhost',subdatabase='lmrm__sonarg'):
+            print_info=True,timeout=10,gateway_port='8443',database_port='27117',host='localhost',subdatabase='lmrm__sonarg'):
     true_false_vars=[append,print_info]
     for var in true_false_vars:
         assert var in [True,False]
@@ -38,7 +38,7 @@ def pipeline_output_collection(username,password,server,database,pipeline,source
     if print_info:
         print("Running Pipeline: "+pipeline)
         start=time.time()
-    response = requests.get(url=url,params=params,verify=False)
+    response = requests.get(url=url,params=params,verify=False,timeout=timeout)
     if print_info:
         print("  Execution Time: "+"{:.2f}s".format(time.time()-start))
         print("  Response: "+response.text)
@@ -46,7 +46,7 @@ def pipeline_output_collection(username,password,server,database,pipeline,source
 ################################################################################################################################
 # Runs an Aggregation Pipeline on the specified source_collection in SonarG and provides the results as a json dictionary
 def pipeline_output_json(username,password,server,database,pipeline,source_collection,limit=None,other_args=None,
-            print_info=True,gateway_port='8443',database_port='27117',host='localhost',subdatabase='lmrm__sonarg'):
+            print_info=True,timeout=10,gateway_port='8443',database_port='27117',host='localhost',subdatabase='lmrm__sonarg'):
     true_false_vars=[print_info]
     for var in true_false_vars:
         assert var in [True,False]
@@ -70,7 +70,7 @@ def pipeline_output_json(username,password,server,database,pipeline,source_colle
     if print_info:
         print("Running Pipeline: "+pipeline)
         start=time.time()
-    response = requests.get(url=url,params=params,verify=False).json()
+    response = requests.get(url=url,params=params,verify=False,timeout=timeout).json()
     if print_info:
         print("  Execution Time: "+"{:.2f}s".format(time.time()-start))
         print("  Found: "+str(len(response))+" Records")
@@ -78,7 +78,7 @@ def pipeline_output_json(username,password,server,database,pipeline,source_colle
 ################################################################################################################################
 # Inserts an array of json documents into the specified target_collection in SonarG using the gateway
 def insert_json_array(username,password,server,database,target_collection,json_array,other_args={"update.1":"_id"},
-            print_info=True,gateway_port='8443',database_port='27117',host='localhost',subdatabase='lmrm__sonarg'):
+            print_info=True,timeout=10,gateway_port='8443',database_port='27117',host='localhost',subdatabase='lmrm__sonarg'):
     true_false_vars=[print_info]
     for var in true_false_vars:
         assert var in [True,False]
@@ -101,7 +101,7 @@ def insert_json_array(username,password,server,database,target_collection,json_a
     if print_info:
         print("Inserting Data into: "+target_collection)
         start=time.time()
-    response = requests.get(url=url,params=params,verify=False)
+    response = requests.get(url=url,params=params,verify=False,timeout=timeout)
     if print_info:
         print("  Execution Time: "+"{:.2f}s".format(time.time()-start))
         print("  Response: "+response.text)
@@ -109,12 +109,12 @@ def insert_json_array(username,password,server,database,target_collection,json_a
 ################################################################################################################################
 # Inserts an array of json documents into the specified target_collection in SonarG using a direct mongo connection
 def insert_json_array_mongo(username,password,server,database,target_collection,json_array,append=True,
-            print_info=True,database_port='27117'):
+            print_info=True,timeout=10,database_port='27117'):
     true_false_vars=[print_info]
-    
+    timeout=timeout*1000
     for var in true_false_vars:
         assert var in [True,False]
-    client = MongoClient('mongodb://%s:%s@%s:%s' % (urllib.parse.quote_plus(username), urllib.parse.quote_plus(password),str(server),str(database_port)))
+    client = MongoClient('mongodb://%s:%s@%s:%s' % (urllib.parse.quote_plus(username), urllib.parse.quote_plus(password),str(server),str(database_port)),serverSelectionTimeoutMS=timeout,connectTimeoutMS=timeout, socketTimeoutMS=timeout)
     db = client[database]
     col = db[target_collection]
     if print_info:
